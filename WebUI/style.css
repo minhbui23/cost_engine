@@ -1,0 +1,69 @@
+body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    background-color: #f4f4f4;
+    display: flex; /* Căn chỉnh layout tốt hơn */
+    flex-direction: column;
+    align-items: center;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.controls {
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: #eee;
+    border-radius: 5px;
+    display: flex;
+    gap: 15px; /* Khoảng cách giữa các element */
+    align-items: center;
+}
+
+.controls label {
+    font-weight: bold;
+}
+
+.controls select,
+.controls button {
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.controls button {
+    cursor: pointer;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+}
+
+.controls button:hover {
+    background-color: #45a049;
+}
+
+
+p {
+    text-align: center;
+    color: #555;
+    margin: 5px 0;
+}
+
+.chart-container {
+    width: 95%;
+    max-width: 1200px; /* Giới hạn chiều rộng tối đa */
+    height: 500px; /* Đặt chiều cao cố định hoặc tương đối */
+    margin: auto;
+    background-color: white; /* Nền trắng cho chart */
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Đảm bảo canvas chiếm đủ không gian */
+#user-cost-chart {
+    width: 100% !important;
+    height: 100% !important;
+}

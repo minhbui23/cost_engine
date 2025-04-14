@@ -1,5 +1,0 @@
-# configs/pricing.yaml
-# Giá mặc định (USD/giờ)
-defaultCPUPricePerHour: 0.032
-defaultRAMPricePerGBHour: 0.004
-
