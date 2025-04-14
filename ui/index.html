@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K8s Cost Viewer - User Costs</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+
+<body>
+
+    <h1>Kubernetes User Costs</h1>
+    <p>Window: <span id="window-start">Loading...</span> - <span id="window-end">Loading...</span></p>
+    <p>Last updated: <span id="last-updated">Loading...</span></p>
+
+
+
+    <div class="chart-container">
+        <canvas id="user-cost-chart"></canvas>
+    </div>
+
+    <script src="app.js"></script>
+
+</body>
+
+</html>
