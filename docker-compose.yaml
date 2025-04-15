@@ -1,0 +1,35 @@
+# docker-compose.yaml
+version: '3.8'
+
+services:
+  api-server:
+    container_name: cost-api
+    image: minhbui1/api-server
+    restart: unless-stopped
+    volumes:
+      - ./API_Server/configs/pricing.yaml:/app/configs/pricing.yaml:ro 
+    command:
+      - "--prometheus.address=http://192.168.10.130:9099"     #You can change this to your own prometheus address
+    expose:
+      - "9991"
+    ports:
+      - "9991:9991"
+    networks:
+      - cost-network
+
+  webui:
+    container_name: cost-webui
+    image: minhbui1/webui
+    restart: unless-stopped
+    ports:
+      - "8080:8080" 
+    volumes: 
+      - ./WebUI/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api-server
+    networks:
+      - cost-network
+
+networks:
+  cost-network:
+    driver: bridge

@@ -1,0 +1,6 @@
+# Dockerfile.webui
+FROM nginx:stable-alpine
+
+COPY WebUI/ /usr/share/nginx/html/
+
+EXPOSE 8080
