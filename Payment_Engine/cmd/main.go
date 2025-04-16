@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"net/url"
 	"os"
 	"strings"
 
@@ -12,8 +13,12 @@ import (
 
 func main() {
 	// --- Define Flags ---
-	// Use Ptr to easily check if flags are set if needed
-	costFile := flag.String("cost-file", "costs.json", "Path to JSON file containing cost data")
+	apiUrl := flag.String("api-url", "http://localhost:9991", "Base URL of the cost API server")
+	apiWindow := flag.String("api-window", "15m", "Window parameter for the cost API (e.g., 15m, 1h)")
+	apiStep := flag.String("api-step", "1m", "Step parameter for the cost API (e.g., 1m, 5m)")
+
+	grpcAddress := flag.String("grpc-address", "localhost:9090", "gRPC endpoint of the streampayd node (host:port)")
+
 	streampaydPath := flag.String("streampayd-path", "streampayd", "Path or command name to execute streampayd")
 	chainID := flag.String("chain-id", "sp-test-1", "StreamPay Chain ID (--chain-id)")
 	providerAddress := flag.String("provider-address", "", "Address of the provider (REQUIRED)")
@@ -23,6 +28,14 @@ func main() {
 	costToStakeRate := flag.Float64("rate", 1000.0, "Conversion rate from cost unit to stake unit (REQUIRED > 0)")
 	minStakeAmount := flag.Int64("min-stake", 1, "Minimum stake amount to send payment (must be >= 1)")
 	dryRun := flag.Bool("dry-run", false, "Run in simulation mode, do not execute deposit command")
+
+	// --- Key Management Flags ---
+	keyDirectory := flag.String("key-directory", "./keys", "Directory containing private key files (e.g., user1.pem)") // ADDED (Example)
+
+	// --- Gas Flags ---
+	gasLimit := flag.Uint64("gas-limit", 200000, "Gas limit for transactions")
+	gasFeeAmount := flag.Int64("gas-fee-amount", 10, "Amount for gas fee")
+	gasFeeDenom := flag.String("gas-fee-denom", "stake", "Denomination for gas fee (use stake unit if empty)") // ADDED
 
 	flag.Parse()
 
@@ -42,40 +55,96 @@ func main() {
 		log.Fatal("Error: Flag -stake-unit is invalid.")
 	}
 
+	// Validate apiUrl
+	_, err := url.ParseRequestURI(*apiUrl)
+	if err != nil {
+		log.Fatalf("Error: Flag -api-url is not a valid URL: %v", err)
+	}
+	if *apiWindow == "" {
+		log.Fatal("Error: Flag -api-window is required.")
+	}
+	if *apiStep == "" {
+		log.Fatal("Error: Flag -api-step is required.")
+	}
+
+	if *grpcAddress == "" {
+		log.Fatal("Error: Flag -grpc-address is required.")
+	}
+
+	// Basic check for key directory - Consider more robust checks
+	info, err := os.Stat(*keyDirectory)
+	if os.IsNotExist(err) {
+		log.Fatalf("Error: Key directory specified by -key-directory does not exist: %s", *keyDirectory)
+	} else if err != nil {
+		log.Fatalf("Error checking key directory %s: %v", *keyDirectory, err)
+	} else if !info.IsDir() {
+		log.Fatalf("Error: Path specified by -key-directory is not a directory: %s", *keyDirectory)
+	}
+
+	// gas check
+	if *gasLimit == 0 {
+		log.Fatal("Error: Flag -gas-limit must be positive.")
+	}
+	if *gasFeeAmount < 0 {
+		log.Fatal("Error: Flag -gas-fee-amount cannot be negative.")
+	}
+	actualGasFeeDenom := *gasFeeDenom
+	if actualGasFeeDenom == "" {
+		actualGasFeeDenom = *stakeUnit // Default gas fee denom to stake unit if not provided
+	}
+	if actualGasFeeDenom == "" {
+		log.Fatal("Error: Gas fee denomination (-gas-fee-denom or -stake-unit) cannot be empty.")
+	}
+
 	// --- Create Config ---
 	cfg := config.Config{
-		CostFile:        *costFile,
-		StreampaydPath:  *streampaydPath,
+		ApiUrl:    *apiUrl,
+		ApiWindow: *apiWindow,
+		ApiStep:   *apiStep,
+
+		GrpcAddress: *grpcAddress,
+
+		KeyDirectory: *keyDirectory,
+
 		ChainID:         *chainID,
 		ProviderAddress: *providerAddress,
-		KeyringBackend:  *keyringBackend,
 		StreamDuration:  *streamDuration,
 		StakeUnit:       *stakeUnit,
 		CostToStakeRate: *costToStakeRate,
 		MinStakeAmount:  *minStakeAmount,
-		DryRun:          *dryRun,
+
+		GasLimit:     *gasLimit,
+		GasFeeAmount: *gasFeeAmount,
+		GasFeeDenom:  actualGasFeeDenom,
+
+		DryRun: *dryRun,
 	}
 	// --- Print loaded configuration ---
-	log.Println("--- Payment Engine Configuration ---")
-	log.Printf(" File Cost: %s", cfg.CostFile)
-	log.Printf(" Streampayd Path: %s", cfg.StreampaydPath)
-	log.Printf("Chain ID: %s", cfg.ChainID)
-	log.Printf("Provider Address: %s", cfg.ProviderAddress)
-	log.Printf(" Keyring Backend: %s", cfg.KeyringBackend)
+	log.Println("--- Payment Engine Configuration (gRPC Mode) ---")
+	log.Printf(" API URL: %s", cfg.ApiUrl)
+	log.Printf(" API Window: %s", cfg.ApiWindow)
+	log.Printf(" API Step: %s", cfg.ApiStep)
+	log.Printf(" gRPC Address: %s", cfg.GrpcAddress)
+	log.Printf(" Key Directory: %s", cfg.KeyDirectory) // Example, review security
+	log.Printf(" Chain ID: %s", cfg.ChainID)
+	log.Printf(" Provider Address: %s", cfg.ProviderAddress)
 	log.Printf(" Stream Duration: %s", cfg.StreamDuration)
 	log.Printf(" Stake Unit: %s", cfg.StakeUnit)
 	log.Printf(" Cost to Stake Rate: %.4f", cfg.CostToStakeRate)
 	log.Printf(" Min Stake Amount: %d %s", cfg.MinStakeAmount, cfg.StakeUnit)
+	log.Printf(" Gas Limit: %d", cfg.GasLimit)
+	log.Printf(" Gas Fee: %d %s", cfg.GasFeeAmount, cfg.GasFeeDenom)
 	log.Printf(" Dry Run Mode: %t", cfg.DryRun)
 	log.Println("----------------------------")
 
-	log.Println("Starting single payment processing cycle...")
-	err := processor.RunPaymentCycle(cfg)
+	log.Println("Starting single payment processing cycle (gRPC)...")
+	// Call processor - processor will need changes to use gRPC client
+	err = processor.RunPaymentCycle(cfg)
 	if err != nil {
 		log.Printf("[ERROR] Payment cycle finished with errors: %v", err)
 		os.Exit(1)
 	} else {
 		log.Println("Payment cycle finished successfully.")
-		os.Exit(0) // exit with success
+		os.Exit(0)
 	}
 }

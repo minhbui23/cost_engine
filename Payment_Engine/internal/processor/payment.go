@@ -1,16 +1,14 @@
 package processor
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"math"
-	"os"
 	"strings"
 	"time"
 
+	"payment-engine/internal/api_client"
 	"payment-engine/internal/config"
-	"payment-engine/internal/parser"
 	"payment-engine/internal/streampay"
 )
 
@@ -26,28 +24,26 @@ func RunPaymentCycle(cfg config.Config) error {
 		log.Println("[DRY RUN MODE ENABLED] Will not execute deposit command.")
 	}
 
-	// 1. Read and Parse cost file
-	log.Printf("Reading cost file: %s", cfg.CostFile)
-	costData, err := parser.ParseCostFile(cfg.CostFile)
+	// 1. Fetch cost data from API
+	log.Printf("Fetching cost data from API: %s (Window: %s, Step: %s)", cfg.ApiUrl, cfg.ApiWindow, cfg.ApiStep)
+	// costData, err := parser.ParseCostFile(cfg.CostFile) // REMOVED
+	costData, err := api_client.FetchCostData(cfg.ApiUrl, cfg.ApiWindow, cfg.ApiStep)
+
 	if err != nil {
-		// If the error is due to the file not existing, consider it as nothing to process, not a serious error
-		if errors.Is(err, os.ErrNotExist) {
-			log.Printf("Cost file '%s' does not exist. Skip cycle this.", cfg.CostFile)
-			log.Printf("===== End of cycle (no file) at %s =====", time.Now().Format(time.RFC3339))
-			return nil // Not an error, just nothing to do
-		}
-		// Other errors (parse JSON, read file) are errors to report
-		log.Printf("[FATAL ERROR] Unable to read or parse file cost '%s': %v", cfg.CostFile, err)
-		log.Printf("===== End of cycle (error reading file) at %s =====", time.Now().Format(time.RFC3339))
-		return fmt.Errorf("error processing file cost: %w", err) // Returns an error so main can handle it
+		// Handle errors from the API client (network, status code, parsing)
+		// Removed the os.ErrNotExist check as it's not relevant for API calls
+		log.Printf("[FATAL ERROR] Failed to fetch or parse cost data from API: %v", err)
+		log.Printf("===== End of cycle (API error) at %s =====", time.Now().Format(time.RFC3339))
+		return fmt.Errorf("error fetching cost data from API: %w", err) // Return the error
 	}
 
+	// Check if the API returned any processable data
 	if len(costData) == 0 {
-		log.Println("The cost file is empty or does not contain valid data. End of cycle.")
-		log.Printf("===== End of cycle (empty file) at %s =====", time.Now().Format(time.RFC3339))
-		return nil
+		log.Println("API returned no user cost data. End of cycle.")
+		log.Printf("===== End of cycle (no data) at %s =====", time.Now().Format(time.RFC3339))
+		return nil // No data is not necessarily an error
 	}
-	log.Printf("Successfully read and parsed %d items from cost file.", len(costData))
+	log.Printf("Successfully fetched and parsed %d items from API.", len(costData))
 
 	// 2. Loop through each user and process
 	successCount := 0
