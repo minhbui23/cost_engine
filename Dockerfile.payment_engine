@@ -1,0 +1,36 @@
+# --- Stage 1: Build ---
+# Use official Go image based on Alpine Linux for compact size
+FROM golang:1.21.11-alpine AS builder
+
+# Set working directory inside container
+WORKDIR /src
+
+COPY Payment_Engine/go.mod Payment_Engine/go.sum ./
+RUN go mod download
+COPY Payment_Engine/ .
+
+# Build Go app
+
+RUN CGO_ENABLED=0 go build -ldflags="-w -s" -o /app/payment-engine ./cmd/main.go
+
+# --- Stage 2: Final ---
+FROM alpine:latest
+
+# Set working directory
+WORKDIR /app
+
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Create a directory for keys (to be mounted from host) and assign ownership
+# Copy the built binary from the 'builder' stage and assign ownership/execute
+COPY --from=builder /app/payment-engine /app/payment-engine
+RUN mkdir /keys && \
+    chown appuser:appgroup /keys && \
+    chown appuser:appgroup /app/payment-engine && \
+    chmod 755 /app/payment-engine
+
+# Switch to non-root user
+USER appuser
+
+ENTRYPOINT ["/app/payment-engine"]
+

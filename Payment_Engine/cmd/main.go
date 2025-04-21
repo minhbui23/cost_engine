@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"net/url"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -28,7 +32,7 @@ func init() {
 func main() {
 	// --- Define Flags ---
 	apiUrl := flag.String("api-url", "http://localhost:9991", "Base URL of the cost API server")
-	apiWindow := flag.String("api-window", "15m", "Window parameter for the cost API (e.g., 15m, 1h)")
+	apiWindow := flag.String("api-window", "15m", "Window parameter for the cost API (e.g., 5m, 15m, 1h)")
 	apiStep := flag.String("api-step", "1m", "Step parameter for the cost API (e.g., 1m, 5m)")
 
 	grpcAddress := flag.String("grpc-address", "localhost:9090", "gRPC endpoint of the streampayd node (host:port)")
@@ -41,12 +45,14 @@ func main() {
 	dryRun := flag.Bool("dry-run", false, "Run in simulation mode, do not execute deposit command")
 
 	// --- Key Management Flags ---
-	keyDirectory := flag.String("key-directory", "./keys", "Directory containing private key files (e.g., user1.pem)") // ADDED (Example)
+	keyDirectory := flag.String("key-directory", "/keys", "Directory containing private key files (e.g., user1.pem)")
 
 	// --- Gas Flags ---
 	gasLimit := flag.Uint64("gas-limit", 200000, "Gas limit for transactions")
 	gasFeeAmount := flag.Int64("gas-fee-amount", 10, "Amount for gas fee")
-	gasFeeDenom := flag.String("gas-fee-denom", "stake", "Denomination for gas fee (use stake unit if empty)") // ADDED
+	gasFeeDenom := flag.String("gas-fee-denom", "stake", "Denomination for gas fee (use stake unit if empty)")
+
+	interval := flag.Duration("interval", 15*time.Minute, "Frequency to run the payment cycle (e.g., 5m, 15m, 1h)")
 
 	flag.Parse()
 
@@ -107,6 +113,10 @@ func main() {
 		log.Fatal("Error: Gas fee denomination (-gas-fee-denom or -stake-unit) cannot be empty.")
 	}
 
+	if *interval <= 0 {
+		log.Fatal("Error: Flag -interval must be a positive duration.")
+	}
+
 	// --- Create Config ---
 	cfg := config.Config{
 		ApiUrl:    *apiUrl,
@@ -146,16 +156,42 @@ func main() {
 	log.Printf(" Gas Limit: %d", cfg.GasLimit)
 	log.Printf(" Gas Fee: %d %s", cfg.GasFeeAmount, cfg.GasFeeDenom)
 	log.Printf(" Dry Run Mode: %t", cfg.DryRun)
+	log.Printf(" Interval: %s", interval.String()) // Log interval
 	log.Println("----------------------------")
 
-	log.Println("Starting single payment processing cycle (gRPC)...")
-	// Call processor - processor will need changes to use gRPC client
-	err = processor.RunPaymentCycle(cfg)
+	// --- Setup Signal Handling for Graceful Shutdown ---
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	log.Println("Running initial payment cycle...")
+	runCycle(cfg) // Gọi hàm riêng để dễ đọc
+
+	// --- Start Periodic Execution ---
+	log.Printf("Starting periodic payment cycle every %s", interval.String())
+	ticker := time.NewTicker(*interval)
+	defer ticker.Stop() // Ensures ticker is stopped when main() finishes
+
+	for {
+		select {
+		case <-ticker.C: // Waits for next tick
+			log.Printf("Ticker triggered. Running payment cycle at %s...", time.Now().Format(time.RFC3339))
+			runCycle(cfg)
+		case <-ctx.Done(): // Receives stop signal (Ctrl+C)
+			log.Println("Received shutdown signal. Stopping payment engine...")
+			// Can perform final cleanup here if needed
+			return // Exits the loop and terminates the program
+		}
+	}
+}
+
+// runCycle wraps the call to processor.RunPaymentCycle and handles logging/errors
+func runCycle(cfg config.Config) {
+	log.Println("----- Starting new payment cycle -----")
+	err := processor.RunPaymentCycle(cfg) // This function needs to return an error for main to handle if desired
 	if err != nil {
+		// In periodic mode, do not exit(1) immediately when an error occurs
+		// Just log the error and continue with the next cycle (unless the error is too serious)
 		log.Printf("[ERROR] Payment cycle finished with errors: %v", err)
-		os.Exit(1)
 	} else {
-		log.Println("Payment cycle finished successfully.")
-		os.Exit(0)
+		log.Println("----- Payment cycle finished successfully -----")
 	}
 }
