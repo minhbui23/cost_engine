@@ -1,22 +1,22 @@
 # Stage 1: Build
 FROM golang:1.24-alpine AS builder
-WORKDIR /app # Đặt WORKDIR là thư mục gốc cho build
+WORKDIR /app # Set WORKDIR as the root directory for the build
 
 COPY API_Server/go.mod API_Server/go.sum ./
 
 RUN go mod download
 
-# Copy toàn bộ source code của API_Server vào WORKDIR
+# Copy all source code of API_Server to WORKDIR
 COPY API_Server/ ./
 
-# Build ứng dụng ngay tại WORKDIR (nơi có main.go và các thư mục con internal, configs)
+# Build the application right in WORKDIR (where main.go and internal, configs subdirectories are)
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /app/cost-engine-api .
 
 # Stage 2: Runtime
 FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/cost-engine-api /app/cost-engine-api
-# Copy file config mặc định
+# Copy the default config file
 COPY API_Server/configs/pricing.yaml /app/configs/pricing.yaml
 EXPOSE 9991
 ENTRYPOINT ["/app/cost-engine-api"]

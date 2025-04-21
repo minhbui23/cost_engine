@@ -13,7 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function formatDate(dateStr) {
         if (!dateStr) return 'N/A';
         try {
-            // Thêm xử lý nếu dateStr không hợp lệ
             const date = new Date(dateStr);
             return isNaN(date) ? 'Invalid Date' : date.toLocaleString();
         } catch (e) {

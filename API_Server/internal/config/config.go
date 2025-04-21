@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"os"
 
-	"simple-cost-calculator/internal/types" // Import từ package types
+	"simple-cost-calculator/internal/types"
 
 	"gopkg.in/yaml.v3"
 )
 
-// LoadPricingConfig đọc và phân tích file cấu hình giá YAML
+// Loads the pricing configuration from a YAML file.
 func LoadPricingConfig(filePath string) (*types.PricingConfig, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -19,8 +19,8 @@ func LoadPricingConfig(filePath string) (*types.PricingConfig, error) {
 	}
 
 	var config types.PricingConfig
-	// Đặt giá trị mặc định trước khi unmarshal
-	config.CPUPriceByInstanceType = make(map[string]float64) // Khởi tạo map
+	// default prices
+	config.CPUPriceByInstanceType = make(map[string]float64)
 	config.RAMPriceByInstanceType = make(map[string]float64)
 
 	err = yaml.Unmarshal(data, &config)

@@ -7,9 +7,23 @@ import (
 	"os"
 	"strings"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
 	"payment-engine/internal/config"
 	"payment-engine/internal/processor"
 )
+
+const (
+	AccountAddressPrefix = "socone"
+)
+
+func init() {
+	config := sdk.GetConfig()
+	config.SetBech32PrefixForAccount(AccountAddressPrefix, AccountAddressPrefix+"pub")
+
+	config.Seal()
+	log.Println("INFO: Bech32 prefixes configured for:", AccountAddressPrefix)
+}
 
 func main() {
 	// --- Define Flags ---
@@ -19,11 +33,8 @@ func main() {
 
 	grpcAddress := flag.String("grpc-address", "localhost:9090", "gRPC endpoint of the streampayd node (host:port)")
 
-	streampaydPath := flag.String("streampayd-path", "streampayd", "Path or command name to execute streampayd")
 	chainID := flag.String("chain-id", "sp-test-1", "StreamPay Chain ID (--chain-id)")
 	providerAddress := flag.String("provider-address", "", "Address of the provider (REQUIRED)")
-	keyringBackend := flag.String("keyring-backend", "test", "Keyring backend (--keyring-backend)")
-	streamDuration := flag.String("stream-duration", "5m", "Stream time (--duration for stream-send)")
 	stakeUnit := flag.String("stake-unit", "stake", "StreamPay currency (amount/fee suffix)")
 	costToStakeRate := flag.Float64("rate", 1000.0, "Conversion rate from cost unit to stake unit (REQUIRED > 0)")
 	minStakeAmount := flag.Int64("min-stake", 1, "Minimum stake amount to send payment (must be >= 1)")
@@ -108,7 +119,6 @@ func main() {
 
 		ChainID:         *chainID,
 		ProviderAddress: *providerAddress,
-		StreamDuration:  *streamDuration,
 		StakeUnit:       *stakeUnit,
 		CostToStakeRate: *costToStakeRate,
 		MinStakeAmount:  *minStakeAmount,
@@ -124,11 +134,12 @@ func main() {
 	log.Printf(" API URL: %s", cfg.ApiUrl)
 	log.Printf(" API Window: %s", cfg.ApiWindow)
 	log.Printf(" API Step: %s", cfg.ApiStep)
+
 	log.Printf(" gRPC Address: %s", cfg.GrpcAddress)
-	log.Printf(" Key Directory: %s", cfg.KeyDirectory) // Example, review security
+	log.Printf(" Key Directory: %s", cfg.KeyDirectory)
+
 	log.Printf(" Chain ID: %s", cfg.ChainID)
 	log.Printf(" Provider Address: %s", cfg.ProviderAddress)
-	log.Printf(" Stream Duration: %s", cfg.StreamDuration)
 	log.Printf(" Stake Unit: %s", cfg.StakeUnit)
 	log.Printf(" Cost to Stake Rate: %.4f", cfg.CostToStakeRate)
 	log.Printf(" Min Stake Amount: %d %s", cfg.MinStakeAmount, cfg.StakeUnit)

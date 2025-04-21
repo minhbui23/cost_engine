@@ -16,7 +16,6 @@ type Config struct {
 	ChainID         string // --chain-id
 	ProviderAddress string
 	KeyringBackend  string  // --keyring-backend
-	StreamDuration  string  // --duration for stream-send
 	StakeUnit       string  // Streampay currency (eg: "stake")
 	CostToStakeRate float64 // Conversion rate from CostUnit to StakeUnit
 	MinStakeAmount  int64   // Minimum stake amount to send (avoid sending 0)

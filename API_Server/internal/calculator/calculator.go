@@ -17,13 +17,11 @@ import (
 	"github.com/prometheus/common/model"
 )
 
-// CostCalculator chịu trách nhiệm tính toán
 type CostCalculator struct {
 	promAPI     prometheusAPI.API
 	pricingConf *types.PricingConfig
 }
 
-// NewCostCalculator khởi tạo calculator
 func NewCostCalculator(api prometheusAPI.API, pricing *types.PricingConfig) *CostCalculator {
 	return &CostCalculator{
 		promAPI:     api,
@@ -31,7 +29,7 @@ func NewCostCalculator(api prometheusAPI.API, pricing *types.PricingConfig) *Cos
 	}
 }
 
-// CalculatePodCosts là hàm chính thực hiện tính toán
+// Main function to calculate costs for all pods in the given time range
 func (cc *CostCalculator) CalculatePodCosts(ctx context.Context, start, end time.Time, step time.Duration) ([]types.PodCost, error) {
 	if cc.pricingConf == nil {
 		return nil, fmt.Errorf("pricing configuration is not loaded")
@@ -40,7 +38,7 @@ func (cc *CostCalculator) CalculatePodCosts(ctx context.Context, start, end time
 	queryRange := prometheusAPI.Range{Start: start, End: end, Step: step}
 	window := types.Window{Start: start, End: end}
 
-	// --- 1. Truy vấn Prometheus song song ---
+	// --- 1. Query Prometheus for CPU and RAM usage ---
 	slog.Info("Querying Prometheus (CPU, RAM, KSM)...")
 	var wg sync.WaitGroup
 	var cpuResult, ramResult model.Value
@@ -62,9 +60,8 @@ func (cc *CostCalculator) CalculatePodCosts(ctx context.Context, start, end time
 		ramResult, ramErr = prom.QueryRange(ctx, cc.promAPI, ramUsageQuery, queryRange)
 	}()
 
-	wg.Wait() // Đợi tất cả query hoàn thành
+	wg.Wait()
 
-	// Kiểm tra lỗi query (có thể làm chi tiết hơn)
 	if cpuErr != nil {
 		return nil, fmt.Errorf("error querying CPU usage: %w", cpuErr)
 	}
@@ -73,7 +70,7 @@ func (cc *CostCalculator) CalculatePodCosts(ctx context.Context, start, end time
 	}
 	slog.Info("Prometheus queries completed.")
 
-	// --- 2. Xử lý Kết quả Prometheus ---
+	// --- 2. Parse Prometheus results ---
 	slog.Info("Parsing Prometheus results...")
 	podCPUCoreSecondsMap := prom.ParseCPUUsage(cpuResult, step)
 	podRAMByteSecondsMap := prom.ParseRAMUsage(ramResult, step)
@@ -81,8 +78,6 @@ func (cc *CostCalculator) CalculatePodCosts(ctx context.Context, start, end time
 
 	results := []types.PodCost{}
 
-	// --- 3. Tính toán Chi phí cho từng Pod ---
-	// Tạo danh sách pod key duy nhất từ cả CPU và RAM map
 	allPodKeys := map[string]bool{}
 	for key := range podCPUCoreSecondsMap {
 		allPodKeys[key] = true
@@ -93,7 +88,6 @@ func (cc *CostCalculator) CalculatePodCosts(ctx context.Context, start, end time
 
 	slog.Info("Calculating costs", "unique_pods_found", len(allPodKeys))
 
-	// *** Lấy giá mặc định MỘT LẦN ***
 	cpuPricePerHour := cc.pricingConf.DefaultCPUPricePerHour
 	ramPricePerGiBHour := cc.pricingConf.DefaultRAMPricePerGBHour
 	slog.Debug("Using default pricing", "cpu_per_core_hour", cpuPricePerHour, "ram_per_gib_hour", ramPricePerGiBHour)
@@ -106,7 +100,6 @@ func (cc *CostCalculator) CalculatePodCosts(ctx context.Context, start, end time
 		}
 		namespace, podName := parts[0], parts[1]
 
-		// Lấy usage (mặc định là 0 nếu không có trong map)
 		totalCPUCoreSeconds := podCPUCoreSecondsMap[podKey]
 		totalRAMByteSeconds := podRAMByteSecondsMap[podKey]
 		costEntry := types.PodCost{
@@ -118,35 +111,11 @@ func (cc *CostCalculator) CalculatePodCosts(ctx context.Context, start, end time
 			//Errors:       []string{},
 		}
 
-		// // Tìm node
-		// nodeName, nodeFound := podToNodeMap[podKey]
-		// if !nodeFound {
-		// 	errMsg := fmt.Sprintf("Node mapping not found via KSM (kube_pod_info)")
-		// 	costEntry.Errors = append(costEntry.Errors, errMsg)
-		// 	results = append(results, costEntry)
-		// 	slog.Warn("Node mapping not found for pod", "pod_key", podKey)
-		// 	continue
-		// }
-
-		// // Tìm labels của node
-		// labels, labelsFound := nodeLabelsMap[nodeName]
-		// if !labelsFound {
-		// 	errMsg := fmt.Sprintf("Node labels not found via KSM (kube_node_labels) for node '%s'. Using default pricing.", nodeName)
-		// 	costEntry.Errors = append(costEntry.Errors, errMsg)
-		// 	slog.Warn("Node labels not found", "node", nodeName, "detail", "Using default pricing.")
-		// }
-
-		// // Xác định giá CPU và RAM
-		// cpuPricePerHour := getCPUPriceForNode(cc.pricingConf, labels)
-		// ramPricePerGiBHour := getRAMPriceForNode(cc.pricingConf, labels) // *** THÊM: Lấy giá RAM ***
-
-		// Tính chi phí CPU
 		costEntry.CPUCost = totalCPUCoreSeconds * (cpuPricePerHour / types.HoursToSeconds)
 
-		// Tính chi phí RAM
 		costEntry.RAMCost = totalRAMByteSeconds * (ramPricePerGiBHour / types.GiB / types.HoursToSeconds)
 
-		// Tính TotalCost
+		//TotalCost
 		costEntry.TotalCost = costEntry.CPUCost + costEntry.RAMCost
 
 		results = append(results, costEntry)

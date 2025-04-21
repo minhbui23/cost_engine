@@ -9,7 +9,7 @@ import (
 	prometheusAPI "github.com/prometheus/client_golang/api/prometheus/v1"
 )
 
-// NewPrometheusAPI tạo một API client mới cho Prometheus
+// NewPrometheusAPI creates a new Prometheus API client.
 func NewPrometheusAPI(prometheusAddress string) (prometheusAPI.API, error) {
 	client, err := api.NewClient(api.Config{Address: prometheusAddress})
 	if err != nil {

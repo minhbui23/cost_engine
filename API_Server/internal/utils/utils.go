@@ -7,7 +7,6 @@ import (
 	"os"
 )
 
-// *** THÊM: Hàm thiết lập logger ***
 func SetupLogger(debug bool) *slog.Logger {
 	logLevel := slog.LevelInfo
 	if debug {

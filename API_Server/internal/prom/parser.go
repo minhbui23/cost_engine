@@ -11,14 +11,12 @@ import (
 	"github.com/prometheus/common/model"
 )
 
-// GetPodKey tạo key chuẩn "namespace/pod"
 func GetPodKey(namespace, pod string) string {
 	return fmt.Sprintf("%s/%s", namespace, pod)
 }
 
-// ParseCPUUsage chuyển đổi kết quả query CPU thành map[namespace/pod] -> totalCoreSeconds
+// ParseCPUUsage query result CPU to map[namespace/pod] -> totalCoreSeconds
 func ParseCPUUsage(result model.Value, step time.Duration) map[string]float64 {
-	// Sử dụng logger mặc định đã được set ở main.go
 	slog.Debug("Entering ParseCPUUsage")
 	podUsage := make(map[string]float64)
 	matrix, ok := result.(model.Matrix)
@@ -96,7 +94,7 @@ func ParseCPUUsage(result model.Value, step time.Duration) map[string]float64 {
 	return podUsage
 }
 
-// ParseRAMUsage chuyển đổi kết quả query RAM thành map[namespace/pod] -> totalByteSeconds
+// ParseRAMUsage query result RAM to map[namespace/pod] -> totalByteSeconds
 func ParseRAMUsage(result model.Value, step time.Duration) map[string]float64 {
 
 	slog.Debug("Entering ParseRAMUsage")
@@ -175,83 +173,6 @@ func ParseRAMUsage(result model.Value, step time.Duration) map[string]float64 {
 	return podUsage
 }
 
-// ParsePodInfo chuyển đổi kết quả query kube_pod_info thành map[namespace/pod] -> nodeName
-// func ParsePodInfo(result model.Value) map[string]string {
-// 	podToNode := make(map[string]string)
-// 	vector, ok := result.(model.Vector)
-// 	if !ok {
-
-// 		slog.Warn(
-// 			"ParsePodInfo expected vector type",
-// 			"expected", "model.Vector",
-// 			"received", fmt.Sprintf("%T", result),
-// 		)
-// 		return podToNode
-// 	}
-
-// 	for _, sample := range vector {
-// 		metric := sample.Metric
-// 		namespace := string(metric["namespace"])
-// 		pod := string(metric["pod"])
-// 		node := string(metric["node"])
-// 		if namespace != "" && pod != "" && node != "" {
-// 			podKey := GetPodKey(namespace, pod)
-// 			podToNode[podKey] = node
-// 		} else {
-
-// 			slog.Debug(
-// 				"Skipping pod info entry",
-// 				"reason", "missing namespace, pod, or node label",
-// 				"raw_labels", metric,
-// 			)
-// 		}
-// 	}
-// 	return podToNode
-// }
-
-// ParseNodeLabels chuyển đổi kết quả query kube_node_labels thành map[nodeName] -> map[labelKey] -> labelValue
-// func ParseNodeLabels(result model.Value) map[string]map[string]string {
-// 	slog.Debug("Entering ParseNodeLabels") // Sử dụng slog
-// 	nodeLabels := make(map[string]map[string]string)
-// 	vector, ok := result.(model.Vector)
-// 	if !ok {
-
-// 		slog.Warn(
-// 			"ParseNodeLabels expected vector type",
-// 			"expected", "model.Vector",
-// 			"received", fmt.Sprintf("%T", result),
-// 		)
-// 		return nodeLabels
-// 	}
-
-// 	slog.Debug("ParseNodeLabels processing vector", "series_count", len(vector))
-
-// 	for i, sample := range vector {
-// 		metric := sample.Metric
-// 		slog.Debug("Processing NodeLabel series", "series_index", i, "raw_labels", metric)
-
-// 		nodeName := string(metric["node"])
-// 		if nodeName == "" {
-// 			slog.Debug("Skipping NodeLabel series", "series_index", i, "reason", "missing node label") // Sử dụng slog
-// 			continue
-// 		}
-// 		if _, exists := nodeLabels[nodeName]; !exists {
-// 			nodeLabels[nodeName] = make(map[string]string)
-// 		}
-// 		for labelName, labelValue := range metric {
-// 			ln := string(labelName)
-// 			if ln != "node" && ln != "__name__" {
-// 				cleanLabelName := strings.TrimPrefix(ln, "label_")
-// 				nodeLabels[nodeName][cleanLabelName] = string(labelValue)
-// 				slog.Debug("Added node label", "series_index", i, "node", nodeName, "label", cleanLabelName, "value", string(labelValue))
-// 			}
-// 		}
-// 	}
-// 	slog.Debug("Exiting ParseNodeLabels", "final_map_size", len(nodeLabels))
-// 	return nodeLabels
-// }
-
-// isNaN kiểm tra giá trị NaN (Not a Number)
 func isNaN(f float64) bool {
 	return f != f
 }

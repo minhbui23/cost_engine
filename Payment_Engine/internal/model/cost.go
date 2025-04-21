@@ -4,24 +4,24 @@ import (
 	"time"
 )
 
-// Window định nghĩa khoảng thời gian tính cost
+// Window defines the time period for calculating the cost
 type Window struct {
 	Start time.Time `json:"start"`
 	End   time.Time `json:"end"`
 }
 
-// UserData chứa thông tin chi phí của một người dùng hoặc hệ thống
+// UserData contains cost information for a user or system
 type UserData struct {
 	TotalCost      float64
 	Window         Window
 	NamespaceCosts map[string]float64
 }
 
-// CostData đại diện cho toàn bộ nội dung file JSON được đọc vào
+// CostData represents the entire contents of the JSON file read in
 type CostData map[string]interface{}
 
-// ParseUserData xử lý dữ liệu interface{} thành UserData cụ thể
-// Trả về UserData và boolean cho biết parse thành công hay không
+// ParseUserData processes interface{} data into a specific UserData
+// Returns UserData and a boolean indicating whether the parse was successful
 func ParseUserData(data interface{}) (UserData, bool) {
 	userDataMap, ok := data.(map[string]interface{})
 	if !ok {
@@ -41,19 +41,19 @@ func ParseUserData(data interface{}) (UserData, bool) {
 				foundTotalCost = true
 			}
 		case "window":
-			// Cẩn thận hơn khi parse window
+			// Be more careful when parsing window
 			windowInterface, ok := value.(map[string]interface{})
 			if !ok {
-				continue // Bỏ qua nếu window không phải map
+				continue // Skip if window is not a map
 			}
 			startStr, okS := windowInterface["start"].(string)
 			endStr, okE := windowInterface["end"].(string)
 
 			if okS && okE {
-				// Thử parse với RFC3339Nano trước, sau đó RFC3339
+				// Try parsing with RFC3339Nano first, then RFC3339
 				start, errS := time.Parse(time.RFC3339Nano, startStr)
 				if errS != nil {
-					start, errS = time.Parse(time.RFC3339, startStr) // Thử định dạng không có nano giây
+					start, errS = time.Parse(time.RFC3339, startStr) // Try formatting without nanoseconds
 				}
 
 				end, errE := time.Parse(time.RFC3339Nano, endStr)
@@ -61,25 +61,25 @@ func ParseUserData(data interface{}) (UserData, bool) {
 					end, errE = time.Parse(time.RFC3339, endStr)
 				}
 
-				// Chỉ đánh dấu là tìm thấy nếu cả hai parse thành công
+				// Only mark as found if both parses succeed
 				if errS == nil && errE == nil {
 					user.Window.Start = start
 					user.Window.End = end
 					foundWindow = true
 				} else {
-					// Ghi log hoặc xử lý lỗi nếu cần khi parse time thất bại
+					// Log or handle errors if needed when time parse fails
 					// fmt.Printf("Warning: Could not parse window times for key. Start error: %v, End error: %v\n", errS, errE)
 				}
 			}
 
 		default:
-			// Giả định các key còn lại là namespace cost nếu là float64
+			// Assume remaining keys are namespace cost if float64
 			if nsCost, ok := value.(float64); ok {
 				user.NamespaceCosts[key] = nsCost
 			}
 		}
 	}
 
-	// Chỉ trả về true nếu cả totalCost và window hợp lệ được tìm thấy
+	// Only return true if both totalCost and valid window are found
 	return user, foundTotalCost && foundWindow
 }

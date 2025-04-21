@@ -19,12 +19,12 @@ import (
 
 var (
 	calc        *calculator.CostCalculator
-	logger      *slog.Logger  // Logger toàn cục
-	defaultStep time.Duration // Lấy từ flag
+	logger      *slog.Logger
+	defaultStep time.Duration
 )
 
 func main() {
-	// --- Định nghĩa Flags ---
+	// --- Flags ---
 	promAddr := flag.String("prometheus.address", "http://localhost:9090", "Address of Prometheus server")
 	pricingFile := flag.String("pricing.file", "configs/pricing.yaml", "Path to pricing configuration file (YAML)")
 	stepStr := flag.String("step", "1m", "Calculation step duration (e.g., 1m, 5m, 15m)")
@@ -32,7 +32,7 @@ func main() {
 	webListenAddr := flag.String("web.listen-address", ":9991", "Address for the web server to listen on")
 	flag.Parse()
 
-	// --- Thiết lập Logger ---
+	// --- Setup Logger ---
 	logger := utils.SetupLogger(*debug)
 	slog.SetDefault(logger)
 
