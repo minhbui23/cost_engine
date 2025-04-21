@@ -90,7 +90,7 @@ services:
         - "3000:3000" 
       environment:
         NODE_ENV: production
-        RUNTIME_RPC_ADDRESS: http://100.123.35.128:26757   
+        RUNTIME_RPC_ADDRESS: http://100.123.35.128:26757     #Your own IP
       restart: unless-stopped
       networks:
       - app-network
@@ -170,8 +170,6 @@ services:
 networks:
   app-network:
     driver: bridge
-  shared-net:     #shared network for all containers
-    external: true
 
 volumes:
   prometheus_data:
