@@ -39,6 +39,7 @@ adjust the parameters accordingly,
 e.g. RUNTIME_RPC_ADDRESS ( dexplorer ), provider-address ( payment-engine) 
 
 ```bash
+cd ../..
 docker compose up -d
 ```
 
