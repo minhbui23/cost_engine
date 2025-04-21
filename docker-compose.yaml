@@ -1,35 +1,177 @@
-# docker-compose.yaml
 version: '3.8'
 
 services:
-  api-server:
-    container_name: cost-api
-    image: minhbui1/api-server
-    restart: unless-stopped
-    volumes:
-      - ./API_Server/configs/pricing.yaml:/app/configs/pricing.yaml:ro 
-    command:
-      - "--prometheus.address=http://192.168.10.130:9099"     #You can change this to your own prometheus address
-    expose:
-      - "9991"
-    ports:
-      - "9991:9991"
-    networks:
-      - cost-network
+  # Blockchain nodes
+    validator0:
+      container_name: validator0
+      image: minhbui1/streampay
+      ports:
+        - 26656:26656    # Tendermint peer-to-peer (P2P) port
+        - 26657:26657    # Tendermint RPC port
+        - 26660:26660    # Prometheus metrics port
+        - 1317:1317      # Cosmos REST API port
+        - 9090:9090      # gRPC port
+        - 9091:9091      # gRPC-Gateway port
+      command: start  --x-crisis-skip-assert-invariants
+      volumes:
+        - ./StreamPay/streampay-socone/network-config/validator0:/root/.streampay
+        - ./StreamPay/streampay-socone/network-config/seeds.txt:/root/.streampay/seeds.txt 
+      networks:
+      - app-network
+    validator1:
+      container_name: validator1
+      image: minhbui1/streampay
+      ports:
+        - 26756:26656    # Tendermint peer-to-peer (P2P) port
+        - 26757:26657    # Tendermint RPC port
+        - 26760:26660    # Prometheus metrics port
+        - 1417:1317      # Cosmos REST API port
+        - 9190:9090      # gRPC port
+        - 9191:9091      # gRPC-Gateway port      
+      command: start  --x-crisis-skip-assert-invariants
+      volumes:
+        - ./StreamPay/streampay-socone/network-config/validator1:/root/.streampay
+        - ./StreamPay/streampay-socone/network-config/seeds.txt:/root/.streampay/seeds.txt     
+      networks:
+      - app-network
+    validator2:
+      container_name: validator2
+      image: minhbui1/streampay
+      ports:
+        - 26856:26656    # Tendermint peer-to-peer (P2P) port
+        - 26857:26657    # Tendermint RPC port
+        - 26860:26660    # Prometheus metrics port
+        - 1517:1317      # Cosmos REST API port
+        - 9290:9090      # gRPC port
+        - 9291:9091      # gRPC-Gateway port      
+      command: start  --x-crisis-skip-assert-invariants
+      volumes:
+        - ./StreamPay/streampay-socone/network-config/validator2:/root/.streampay
+        - ./StreamPay/streampay-socone/network-config/seeds.txt:/root/.streampay/seeds.txt 
+      networks:
+      - app-network
+    validator3:
+      container_name: validator3
+      image: minhbui1/streampay
+      ports:
+        - 26956:26656    # Tendermint peer-to-peer (P2P) port
+        - 26957:26657    # Tendermint RPC port
+        - 26960:26660    # Prometheus metrics port
+        - 1617:1317      # Cosmos REST API port
+        - 9390:9090      # gRPC port
+        - 9391:9091      # gRPC-Gateway port      
+      command: start  --x-crisis-skip-assert-invariants
+      volumes:
+        - ./StreamPay/streampay-socone/network-config/validator3:/root/.streampay
+        - ./StreamPay/streampay-socone/network-config/seeds.txt:/root/.streampay/seeds.txt      
+      networks:
+      - app-network
+    seed0:
+      container_name: seed0
+      image: minhbui1/streampay
+      ports:
+        - 27056:26656
+        - 27057:26657
+        - 27060:26660
+        - 1717:1317      # Cosmos REST API port
+        - 9490:9090      # gRPC port
+        - 9491:9091      # gRPC-Gateway port  
+      command: start     
+      volumes:
+        - ./StreamPay/streampay-socone/network-config/seed0:/root/.streampay
+        - ./StreamPay/streampay-socone/network-config/seeds.txt:/root/.streampay/seeds.txt
+      networks:
+      - app-network
 
-  webui:
-    container_name: cost-webui
-    image: minhbui1/webui
-    restart: unless-stopped
-    ports:
-      - "8080:8080" 
-    volumes: 
-      - ./WebUI/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on:
-      - api-server
-    networks:
-      - cost-network
+    explorer:
+      image: minhbui1/dexplorer
+      container_name: explorer
+      ports:
+        - "3000:3000" 
+      environment:
+        NODE_ENV: production
+        RUNTIME_RPC_ADDRESS: http://100.123.35.128:26757   
+      restart: unless-stopped
+      networks:
+      - app-network
+
+    # --- Cost API Server & WebUI ---
+    api-server:
+      networks:
+        - app-network
+      container_name: cost-api
+      image: minhbui1/api-server
+      restart: unless-stopped
+      volumes:
+        - ./Cost_Engine/API_Server/configs/pricing.yaml:/app/configs/pricing.yaml:ro
+      command:
+        - "--prometheus.address=http://prometheus:9090"
+        - "step=1m" # default 1m
+      ports:
+        - "9991:9991"
+      depends_on:
+        - prometheus
+
+    webui:
+      networks:
+        - app-network
+      container_name: cost-webui
+      image: minhbui1/webui
+      restart: unless-stopped
+      ports:
+        - "80:8080"
+      volumes:
+        - ./Cost_Engine/WebUI/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      depends_on:
+        - api-server
+
+    # --- Prometheus ---
+    prometheus:
+      networks:
+        - app-network
+      image: prom/prometheus:latest
+      container_name: prometheus
+      restart: always
+      volumes:
+        - ./Prometheus/prometheus.yaml:/etc/prometheus/prometheus.yml:ro
+        - prometheus_data:/prometheus
+      ports:
+        - "9099:9090" 
+
+    # --- Payment Engine ---
+    payment-engine:
+      networks:
+        - app-network
+        - shared-net
+      container_name: payment-engine
+      image: minhbui1/payment-engine 
+      restart: on-failure
+      volumes:
+        - ./Cost_Engine/Payment_Engine/keys:/keys:ro
+      command:
+        - "-api-url=http://api-server:9991" 
+        - "-api-window=5m"                  # default 15m
+        - "-api-step=1m"                    # default 1m
+        - "-grpc-address=validator0:9090"   
+        - "-chain-id=socp-chain"            
+        - "-provider-address=socone1dm0w92x6trpvj5ccuq8vtuf57ph5mathrh6dmv" # Required, Replace with your own
+        - "-stake-unit=stake"               # default
+        - "-rate=1000.0"                    # default
+        - "-min-stake=1"                    # default
+        - "-key-directory=/keys"            # default
+        - "-gas-limit=200000"               # default
+        - "-gas-fee-amount=10"              # default
+        - "-gas-fee-denom=stake"            # default
+        - "-interval=5m"                    # default 15m
+        - "-dry-run=false"                  # defualt false
+      depends_on:
+        - api-server 
 
 networks:
-  cost-network:
+  app-network:
     driver: bridge
+  shared-net:     #shared network for all containers
+    external: true
+
+volumes:
+  prometheus_data:

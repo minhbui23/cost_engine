@@ -1,0 +1,113 @@
+# Test this file with
+#   goreleaser release --config goreleaser.yml --clean --snapshot
+
+version: 2
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+      # - GO111MODULE=on
+    ldflags:
+      --s -w -X main.version={{ .Version }}
+    flags:
+      - -trimpath
+    goos:
+      - linux
+      - darwin
+      - windows
+      - openbsd
+    goarch:
+      - amd64
+
+archives:
+  - format: tar.gz  # Change format to match your preferences (gz, zip, tar.gz, etc.)
+    files:
+      - bin/*  # Include all binaries in the bin directory
+    format_overrides:
+      - goos: windows
+        format: zip
+
+nfpms:
+  - builds:
+      - scopay
+    vendor: socone
+    homepage:  https://github.com/socone/scopay
+    maintainer: "Lap Ngo Doan<lapd@soc.one>"
+    description: "SoCone Payment Network."
+    license: Private
+    formats:
+      - apk
+      - deb
+      - rpm
+    bindir: /usr/bin
+
+dockers:
+- image_templates:
+  - 'socone/{{.ProjectName}}:{{ .Tag }}-amd64'
+  - 'ghcr.io/socone/{{.ProjectName}}:{{ .Tag }}-amd64'
+  dockerfile: Dockerfile
+  use: buildx
+  build_flag_templates:
+  - "--pull"
+  - "--label=io.artifacthub.package.readme-url=https://raw.githubusercontent.com/socone/scopay/master/README.md"
+  - "--label=io.artifacthub.package.maintainers=[{\"name\":\"Lap Ngo Doan\",\"email\":\"lapd@soc.one\"}]"
+  - "--label=io.artifacthub.package.license=Private"
+  - "--label=org.opencontainers.image.description=SoCone Payment Network."
+  - "--label=org.opencontainers.image.created={{.Date}}"
+  - "--label=org.opencontainers.image.name={{.ProjectName}}"
+  - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+  - "--label=org.opencontainers.image.version={{.Version}}"
+  - "--label=org.opencontainers.image.source={{.GitURL}}"
+  - "--platform=linux/amd64"
+
+docker_manifests:
+- name_template: 'socone/{{.ProjectName}}:{{ .Tag }}'
+  image_templates:
+  - 'socone/{{.ProjectName}}:{{ .Tag }}-amd64'
+  - 'socone/{{.ProjectName}}:{{ .Tag }}-arm64'
+- name_template: 'ghcr.io/socone/{{.ProjectName}}:{{ .Tag }}'
+  image_templates:
+  - 'ghcr.io/socone/{{.ProjectName}}:{{ .Tag }}-amd64'
+
+- name_template: 'socone/{{.ProjectName}}:latest'
+  image_templates:
+  - 'socone/{{.ProjectName}}:{{ .Tag }}-amd64'
+  - 'socone/{{.ProjectName}}:{{ .Tag }}-arm64'
+- name_template: 'ghcr.io/socone/{{.ProjectName}}:latest'
+  image_templates:
+  - 'ghcr.io/socone/{{.ProjectName}}:{{ .Tag }}-amd64'
+
+release:
+  draft: false  # Set to true for drafts, false for actual releases
+  prerelease: auto  # Automatically mark as a prerelease if applicable
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"  # Exclude commit messages starting with "docs:"
+      - "^test:"   # Exclude commit messages starting with "test:"
+      - '^chore'
+      - 'merge conflict'
+      - Merge pull request
+      - Merge remote-tracking branch
+      - Merge branch
+      - go mod tidy
+  groups:
+    - title: Dependency updates
+      regexp: '^.*?(feat|fix)\(deps\)!?:.+$'
+      order: 300
+    - title: 'New Features'
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 100
+    - title: 'Bug fixes'
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 200
+    - title: 'Documentation updates'
+      regexp: ^.*?doc(\([[:word:]]+\))??!?:.+$
+      order: 400
+    - title: Other work
+      order: 9999

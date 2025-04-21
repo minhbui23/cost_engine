@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ns1-user2-stress
+  namespace: ns1-user2
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ns1-user2-stress
+  template:
+    metadata:
+      labels:
+        app: ns1-user2-stress
+    spec:
+      containers:
+      - name: stress
+        image: progrium/stress
+        command: ["stress"]
+        args: ["--cpu", "1", "--vm", "1", "--vm-bytes", "100M", "--timeout", "3600s"]
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "100Mi"
+          limits:
+            cpu: "110m"
+            memory: "110Mi"

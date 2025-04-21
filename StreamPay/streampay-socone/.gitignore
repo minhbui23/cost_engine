@@ -1,0 +1,10 @@
+vue/node_modules
+vue/dist
+release/
+.idea
+build
+bin
+network-config
+tmp
+*.txt
+keys

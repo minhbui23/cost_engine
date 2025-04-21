@@ -1,0 +1,18 @@
+syntax = "proto3";
+package OmniFlix.streampay.v1;
+
+import "gogoproto/gogo.proto";
+import "cosmos/base/v1beta1/coin.proto";
+
+option go_package = "github.com/OmniFlix/streampay/x/streampay/types";
+option (gogoproto.goproto_getters_all) = false;
+
+
+
+message Params {
+  string  stream_payment_fee_percentage = 1 [
+    (gogoproto.moretags) = "yaml:\"stream_payment_fee_percentage\"",
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec",
+    (gogoproto.nullable) = false
+  ];
+}

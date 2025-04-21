@@ -1,0 +1,11 @@
+services:
+  app:
+    image: minhbui1/dexplorer
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_RPC_ADDRESS: http://127.0.0.1:26657
+    #volumes:
+    #  - .:/app
+    restart: unless-stopped

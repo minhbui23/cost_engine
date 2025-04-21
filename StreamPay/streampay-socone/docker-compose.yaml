@@ -1,0 +1,96 @@
+  services:
+    validator0:
+      networks:
+      - localnet
+      container_name: validator0
+      image: minhbui1/streampay
+      ports:
+        - 26656:26656    # Tendermint peer-to-peer (P2P) port
+        - 26657:26657    # Tendermint RPC port
+        - 26660:26660    # Prometheus metrics port
+        - 1317:1317      # Cosmos REST API port
+        - 9090:9090      # gRPC port
+        - 9091:9091      # gRPC-Gateway port
+      command: start  --x-crisis-skip-assert-invariants
+      volumes:
+        - ./network-config/validator0:/root/.streampay
+        - ./network-config/seeds.txt:/root/.streampay/seeds.txt 
+    validator1:
+      networks:
+      - localnet
+      container_name: validator1
+      image: minhbui1/streampay
+      ports:
+        - 26756:26656    # Tendermint peer-to-peer (P2P) port
+        - 26757:26657    # Tendermint RPC port
+        - 26760:26660    # Prometheus metrics port
+        - 1417:1317      # Cosmos REST API port
+        - 9190:9090      # gRPC port
+        - 9191:9091      # gRPC-Gateway port      
+      command: start  --x-crisis-skip-assert-invariants
+      volumes:
+        - ./network-config/validator1:/root/.streampay
+        - ./network-config/seeds.txt:/root/.streampay/seeds.txt     
+    validator2:
+      networks:
+      - localnet
+      container_name: validator2
+      image: minhbui1/streampay
+      ports:
+        - 26856:26656    # Tendermint peer-to-peer (P2P) port
+        - 26857:26657    # Tendermint RPC port
+        - 26860:26660    # Prometheus metrics port
+        - 1517:1317      # Cosmos REST API port
+        - 9290:9090      # gRPC port
+        - 9291:9091      # gRPC-Gateway port      
+      command: start  --x-crisis-skip-assert-invariants
+      volumes:
+        - ./network-config/validator2:/root/.streampay
+        - ./network-config/seeds.txt:/root/.streampay/seeds.txt 
+    validator3:
+      networks:
+      - localnet
+      container_name: validator3
+      image: minhbui1/streampay
+      ports:
+        - 26956:26656    # Tendermint peer-to-peer (P2P) port
+        - 26957:26657    # Tendermint RPC port
+        - 26960:26660    # Prometheus metrics port
+        - 1617:1317      # Cosmos REST API port
+        - 9390:9090      # gRPC port
+        - 9391:9091      # gRPC-Gateway port      
+      command: start  --x-crisis-skip-assert-invariants
+      volumes:
+        - ./network-config/validator3:/root/.streampay
+        - ./network-config/seeds.txt:/root/.streampay/seeds.txt      
+    seed0:
+      networks:
+      - localnet
+      container_name: seed0
+      image: minhbui1/streampay
+      ports:
+        - 27056:26656
+        - 27057:26657
+        - 27060:26660
+        - 1717:1317      # Cosmos REST API port
+        - 9490:9090      # gRPC port
+        - 9491:9091      # gRPC-Gateway port  
+      command: start     
+      volumes:
+        - ./network-config/seed0:/root/.streampay
+        - ./network-config/seeds.txt:/root/.streampay/seeds.txt
+
+    explorer:
+      image: minhbui1/dexplorer
+      container_name: explorer
+      ports:
+        - "3000:3000" 
+      environment:
+        NODE_ENV: production
+        RUNTIME_RPC_ADDRESS: http://100.123.35.128:26757   
+      restart: unless-stopped
+      networks:
+      - localnet
+
+  networks:
+    localnet:
